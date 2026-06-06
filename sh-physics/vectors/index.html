@@ -1,0 +1,725 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>3D Vector Addition</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=JetBrains+Mono:wght@300;400;600&display=swap');
+
+  :root {
+    --bg: #04080f;
+    --panel: rgba(6,14,30,0.92);
+    --border: rgba(0,200,255,0.15);
+    --v1: #00e5ff;
+    --v2: #ff4d6d;
+    --vr: #b8ff57;
+    --text: #cce8ff;
+    --dim: #3a5a7a;
+    --glow1: rgba(0,229,255,0.25);
+    --glow2: rgba(255,77,109,0.25);
+    --glowr: rgba(184,255,87,0.25);
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    font-family: 'JetBrains Mono', monospace;
+    color: var(--text);
+    height: 100vh;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  /* HEADER */
+  .header {
+    position: relative;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 24px;
+    border-bottom: 1px solid var(--border);
+    background: rgba(4,8,15,0.95);
+    backdrop-filter: blur(10px);
+  }
+  .header-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    color: var(--v1);
+    text-shadow: 0 0 20px var(--v1);
+  }
+  .header-sub {
+    font-size: 10px;
+    color: var(--dim);
+    letter-spacing: 2px;
+    margin-top: 2px;
+  }
+  .header-badge {
+    font-size: 9px;
+    letter-spacing: 1.5px;
+    color: var(--vr);
+    border: 1px solid rgba(184,255,87,0.3);
+    border-radius: 4px;
+    padding: 3px 8px;
+    background: rgba(184,255,87,0.05);
+  }
+
+  /* MAIN LAYOUT */
+  .main {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+    position: relative;
+  }
+
+  /* THREE.JS CANVAS */
+  #threeCanvas {
+    flex: 1;
+    display: block;
+    cursor: grab;
+  }
+  #threeCanvas:active { cursor: grabbing; }
+
+  /* SIDE PANEL */
+  .panel {
+    width: 300px;
+    background: var(--panel);
+    border-left: 1px solid var(--border);
+    backdrop-filter: blur(12px);
+    display: flex;
+    flex-direction: column;
+    overflow-y: auto;
+    overflow-x: hidden;
+  }
+  .panel::-webkit-scrollbar { width: 4px; }
+  .panel::-webkit-scrollbar-track { background: transparent; }
+  .panel::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+  .panel-section {
+    padding: 18px 20px;
+    border-bottom: 1px solid var(--border);
+  }
+  .panel-section:last-child { border-bottom: none; }
+
+  .section-title {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 9px;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  .v1-title { color: var(--v1); text-shadow: 0 0 10px var(--v1); }
+  .v2-title { color: var(--v2); text-shadow: 0 0 10px var(--v2); }
+  .vr-title { color: var(--vr); text-shadow: 0 0 10px var(--vr); }
+
+  /* SLIDERS */
+  .slider-row {
+    margin-bottom: 12px;
+  }
+  .slider-label {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 5px;
+    font-size: 11px;
+    color: var(--dim);
+  }
+  .slider-label span:last-child {
+    font-size: 12px;
+    color: var(--text);
+    font-weight: 600;
+    min-width: 48px;
+    text-align: right;
+  }
+
+  input[type=range] {
+    width: 100%;
+    height: 4px;
+    -webkit-appearance: none;
+    appearance: none;
+    border-radius: 2px;
+    outline: none;
+    cursor: pointer;
+  }
+  .v1-slider { background: linear-gradient(90deg, rgba(0,229,255,0.2), var(--v1)); }
+  .v2-slider { background: linear-gradient(90deg, rgba(255,77,109,0.2), var(--v2)); }
+
+  input[type=range].v1-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    background: var(--v1);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--v1);
+    cursor: pointer;
+  }
+  input[type=range].v2-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 14px; height: 14px;
+    background: var(--v2);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--v2);
+    cursor: pointer;
+  }
+
+  /* RESULTANT DISPLAY */
+  .result-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+  .result-box {
+    background: rgba(184,255,87,0.05);
+    border: 1px solid rgba(184,255,87,0.2);
+    border-radius: 8px;
+    padding: 10px;
+    text-align: center;
+  }
+  .result-box.full { grid-column: 1/-1; }
+  .result-box-label {
+    font-size: 9px;
+    color: var(--dim);
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+  .result-box-val {
+    font-family: 'Orbitron', sans-serif;
+    font-size: 16px;
+    font-weight: 700;
+    color: var(--vr);
+    text-shadow: 0 0 15px var(--vr);
+  }
+  .result-box-val.large {
+    font-size: 22px;
+  }
+
+  /* VECTOR COMPONENTS */
+  .comp-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 4px 0;
+    font-size: 11px;
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+  }
+  .comp-row:last-child { border-bottom: none; }
+  .comp-key { color: var(--dim); letter-spacing: 1px; }
+  .comp-val { font-weight: 600; font-size: 12px; }
+  .c1 { color: var(--v1); }
+  .c2 { color: var(--v2); }
+  .cr { color: var(--vr); }
+
+  /* FORMULA BOX */
+  .formula-box {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    font-size: 11px;
+    color: var(--dim);
+    line-height: 1.8;
+  }
+  .formula-box .hl { color: var(--vr); font-weight: 600; }
+
+  /* ANIMATE BUTTON */
+  .anim-btn {
+    width: 100%;
+    padding: 10px;
+    background: linear-gradient(135deg, rgba(184,255,87,0.1), rgba(184,255,87,0.2));
+    border: 1px solid rgba(184,255,87,0.4);
+    border-radius: 10px;
+    color: var(--vr);
+    font-family: 'Orbitron', sans-serif;
+    font-size: 11px;
+    letter-spacing: 2px;
+    cursor: pointer;
+    transition: all 0.2s;
+    margin-top: 8px;
+  }
+  .anim-btn:hover {
+    background: linear-gradient(135deg, rgba(184,255,87,0.2), rgba(184,255,87,0.35));
+    box-shadow: 0 0 20px rgba(184,255,87,0.2);
+    transform: translateY(-1px);
+  }
+  .anim-btn:active { transform: scale(0.98); }
+
+  /* DRAG HINT */
+  .hint {
+    font-size: 9px;
+    color: var(--dim);
+    text-align: center;
+    letter-spacing: 1px;
+    margin-top: 6px;
+    opacity: 0.6;
+  }
+
+  /* LEGEND */
+  .legend {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 11px;
+  }
+  .legend-dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    flex-shrink: 0;
+  }
+
+  /* GRID OVERLAY on canvas */
+  .canvas-overlay {
+    position: absolute;
+    top: 12px;
+    left: 16px;
+    font-size: 10px;
+    color: rgba(0,229,255,0.3);
+    letter-spacing: 1.5px;
+    font-family: 'JetBrains Mono', monospace;
+    pointer-events: none;
+  }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<div class="header">
+  <div>
+    <div class="header-title">⟨ VECTOR ADDITION ⟩</div>
+    <div class="header-sub">3D PHYSICS SIMULATION · RESULTANT FINDER</div>
+  </div>
+  <div class="header-badge">THREE.JS ENGINE</div>
+</div>
+
+<!-- MAIN -->
+<div class="main">
+  <canvas id="threeCanvas"></canvas>
+  <div class="canvas-overlay" id="coordDisplay">DRAG TO ROTATE · SCROLL TO ZOOM</div>
+
+  <!-- SIDE PANEL -->
+  <div class="panel">
+
+    <!-- VECTOR A -->
+    <div class="panel-section">
+      <div class="section-title v1-title">⟶ Vector A</div>
+
+      <div class="slider-row">
+        <div class="slider-label"><span>Magnitude</span><span id="v1MagVal">5.0</span></div>
+        <input type="range" class="v1-slider" id="v1Mag" min="1" max="10" step="0.1" value="5">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label"><span>θ (XY angle)</span><span id="v1ThetaVal">45°</span></div>
+        <input type="range" class="v1-slider" id="v1Theta" min="0" max="360" step="1" value="45">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label"><span>φ (elevation)</span><span id="v1PhiVal">30°</span></div>
+        <input type="range" class="v1-slider" id="v1Phi" min="-90" max="90" step="1" value="30">
+      </div>
+
+      <div style="margin-top:10px;">
+        <div class="comp-row"><span class="comp-key">Ax</span><span class="comp-val c1" id="v1x">—</span></div>
+        <div class="comp-row"><span class="comp-key">Ay</span><span class="comp-val c1" id="v1y">—</span></div>
+        <div class="comp-row"><span class="comp-key">Az</span><span class="comp-val c1" id="v1z">—</span></div>
+      </div>
+    </div>
+
+    <!-- VECTOR B -->
+    <div class="panel-section">
+      <div class="section-title v2-title">⟶ Vector B</div>
+
+      <div class="slider-row">
+        <div class="slider-label"><span>Magnitude</span><span id="v2MagVal">4.0</span></div>
+        <input type="range" class="v2-slider" id="v2Mag" min="1" max="10" step="0.1" value="4">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label"><span>θ (XY angle)</span><span id="v2ThetaVal">135°</span></div>
+        <input type="range" class="v2-slider" id="v2Theta" min="0" max="360" step="1" value="135">
+      </div>
+      <div class="slider-row">
+        <div class="slider-label"><span>φ (elevation)</span><span id="v2PhiVal">-20°</span></div>
+        <input type="range" class="v2-slider" id="v2Phi" min="-90" max="90" step="1" value="-20">
+      </div>
+
+      <div style="margin-top:10px;">
+        <div class="comp-row"><span class="comp-key">Bx</span><span class="comp-val c2" id="v2x">—</span></div>
+        <div class="comp-row"><span class="comp-key">By</span><span class="comp-val c2" id="v2y">—</span></div>
+        <div class="comp-row"><span class="comp-key">Bz</span><span class="comp-val c2" id="v2z">—</span></div>
+      </div>
+    </div>
+
+    <!-- RESULTANT -->
+    <div class="panel-section">
+      <div class="section-title vr-title">★ Resultant R = A + B</div>
+
+      <div class="result-grid">
+        <div class="result-box full">
+          <div class="result-box-label">Magnitude |R|</div>
+          <div class="result-box-val large" id="rMag">—</div>
+        </div>
+        <div class="result-box">
+          <div class="result-box-label">θ angle</div>
+          <div class="result-box-val" id="rTheta">—</div>
+        </div>
+        <div class="result-box">
+          <div class="result-box-label">φ elevation</div>
+          <div class="result-box-val" id="rPhi">—</div>
+        </div>
+      </div>
+
+      <div style="margin-top:10px;">
+        <div class="comp-row"><span class="comp-key">Rx</span><span class="comp-val cr" id="rx">—</span></div>
+        <div class="comp-row"><span class="comp-key">Ry</span><span class="comp-val cr" id="ry">—</span></div>
+        <div class="comp-row"><span class="comp-key">Rz</span><span class="comp-val cr" id="rz">—</span></div>
+      </div>
+
+      <button class="anim-btn" id="animBtn">▶ ANIMATE ADDITION</button>
+      <div class="hint">WATCH TRIANGLE LAW IN 3D</div>
+    </div>
+
+    <!-- FORMULA -->
+    <div class="panel-section">
+      <div class="section-title" style="color:#3a5a7a;">∑ Formula</div>
+      <div class="formula-box">
+        <span class="hl">R</span> = A + B<br>
+        <span class="hl">|R|</span> = √(Rx²+Ry²+Rz²)<br>
+        <span class="hl">θ</span> = atan2(Ry, Rx)<br>
+        <span class="hl">φ</span> = asin(Rz / |R|)
+      </div>
+    </div>
+
+    <!-- LEGEND -->
+    <div class="panel-section">
+      <div class="section-title" style="color:#3a5a7a;">◉ Legend</div>
+      <div class="legend">
+        <div class="legend-item"><div class="legend-dot" style="background:var(--v1);box-shadow:0 0 6px var(--v1)"></div><span>Vector A (cyan)</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--v2);box-shadow:0 0 6px var(--v2)"></div><span>Vector B (red)</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:var(--vr);box-shadow:0 0 6px var(--vr)"></div><span>Resultant R (green)</span></div>
+        <div class="legend-item"><div class="legend-dot" style="background:#555;"></div><span>Dashed — Triangle Law</span></div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ===== THREE.JS SETUP =====
+const canvas = document.getElementById('threeCanvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(window.devicePixelRatio);
+renderer.setClearColor(0x04080f, 1);
+
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 1, 0.1, 1000);
+camera.position.set(14, 10, 14);
+camera.lookAt(0, 0, 0);
+
+// Resize
+function resize() {
+  const w = canvas.clientWidth, h = canvas.clientHeight;
+  renderer.setSize(w, h, false);
+  camera.aspect = w / h;
+  camera.updateProjectionMatrix();
+}
+window.addEventListener('resize', resize);
+resize();
+
+// ===== ORBIT CONTROLS (manual) =====
+let isDragging = false, lastX = 0, lastY = 0;
+let spherical = { theta: Math.PI/4, phi: Math.PI/3.5, radius: 22 };
+
+canvas.addEventListener('mousedown', e => { isDragging = true; lastX = e.clientX; lastY = e.clientY; });
+window.addEventListener('mouseup', () => isDragging = false);
+window.addEventListener('mousemove', e => {
+  if (!isDragging) return;
+  const dx = (e.clientX - lastX) * 0.008;
+  const dy = (e.clientY - lastY) * 0.008;
+  spherical.theta -= dx;
+  spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi + dy));
+  lastX = e.clientX; lastY = e.clientY;
+  updateCamera();
+});
+canvas.addEventListener('wheel', e => {
+  spherical.radius = Math.max(8, Math.min(40, spherical.radius + e.deltaY * 0.03));
+  updateCamera();
+});
+
+// Touch support
+canvas.addEventListener('touchstart', e => { isDragging = true; lastX = e.touches[0].clientX; lastY = e.touches[0].clientY; });
+canvas.addEventListener('touchend', () => isDragging = false);
+canvas.addEventListener('touchmove', e => {
+  if (!isDragging) return;
+  const dx = (e.touches[0].clientX - lastX) * 0.008;
+  const dy = (e.touches[0].clientY - lastY) * 0.008;
+  spherical.theta -= dx;
+  spherical.phi = Math.max(0.1, Math.min(Math.PI - 0.1, spherical.phi + dy));
+  lastX = e.touches[0].clientX; lastY = e.touches[0].clientY;
+  updateCamera();
+});
+
+function updateCamera() {
+  camera.position.set(
+    spherical.radius * Math.sin(spherical.phi) * Math.cos(spherical.theta),
+    spherical.radius * Math.cos(spherical.phi),
+    spherical.radius * Math.sin(spherical.phi) * Math.sin(spherical.theta)
+  );
+  camera.lookAt(0, 0, 0);
+}
+updateCamera();
+
+// ===== GRID =====
+const gridHelper = new THREE.GridHelper(20, 20, 0x0a2040, 0x071530);
+scene.add(gridHelper);
+
+// ===== AXES =====
+function makeAxis(dir, color, length = 10) {
+  const mat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.5 });
+  const pts = [new THREE.Vector3(0,0,0), dir.clone().multiplyScalar(length)];
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+  return new THREE.Line(geo, mat);
+}
+scene.add(makeAxis(new THREE.Vector3(1,0,0), 0xff3344));
+scene.add(makeAxis(new THREE.Vector3(0,1,0), 0x44ff88));
+scene.add(makeAxis(new THREE.Vector3(0,0,1), 0x3388ff));
+
+// Axis labels (sprites)
+function makeLabel(text, pos, color) {
+  const canvas2 = document.createElement('canvas');
+  canvas2.width = 64; canvas2.height = 32;
+  const ctx = canvas2.getContext('2d');
+  ctx.fillStyle = color;
+  ctx.font = 'bold 22px monospace';
+  ctx.textAlign = 'center';
+  ctx.fillText(text, 32, 24);
+  const tex = new THREE.CanvasTexture(canvas2);
+  const mat = new THREE.SpriteMaterial({ map: tex, transparent: true });
+  const sprite = new THREE.Sprite(mat);
+  sprite.scale.set(0.8, 0.4, 1);
+  sprite.position.copy(pos);
+  scene.add(sprite);
+}
+makeLabel('X', new THREE.Vector3(10.8,0,0), '#ff3344');
+makeLabel('Y', new THREE.Vector3(0,10.8,0), '#44ff88');
+makeLabel('Z', new THREE.Vector3(0,0,10.8), '#3388ff');
+
+// ===== ARROW HELPER =====
+function makeArrow(dir, color, length) {
+  const group = new THREE.Group();
+  const ndir = dir.clone().normalize();
+  const bodyLen = length * 0.82;
+  const headLen = length * 0.18;
+  const headRadius = length * 0.055;
+
+  // Shaft
+  const shaftGeo = new THREE.CylinderGeometry(length*0.022, length*0.022, bodyLen, 12);
+  const shaftMat = new THREE.MeshPhongMaterial({ color, emissive: color, emissiveIntensity: 0.4, shininess: 80 });
+  const shaft = new THREE.Mesh(shaftGeo, shaftMat);
+  shaft.position.set(0, bodyLen/2, 0);
+  group.add(shaft);
+
+  // Head
+  const headGeo = new THREE.ConeGeometry(headRadius, headLen, 12);
+  const head = new THREE.Mesh(headGeo, shaftMat);
+  head.position.set(0, bodyLen + headLen/2, 0);
+  group.add(head);
+
+  // Glow line behind
+  const glowMat = new THREE.LineBasicMaterial({ color, transparent: true, opacity: 0.25, linewidth: 1 });
+  const glowPts = [new THREE.Vector3(0,0,0), new THREE.Vector3(0,length,0)];
+  const glowGeo = new THREE.BufferGeometry().setFromPoints(glowPts);
+  group.add(new THREE.Line(glowGeo, glowMat));
+
+  // Orient group to direction
+  if (ndir.y < -0.999) {
+    group.rotation.z = Math.PI;
+  } else if (!(Math.abs(ndir.x) < 0.001 && Math.abs(ndir.z) < 0.001)) {
+    const axis = new THREE.Vector3(0,1,0).cross(ndir).normalize();
+    const angle = Math.acos(Math.max(-1, Math.min(1, new THREE.Vector3(0,1,0).dot(ndir))));
+    group.setRotationFromAxisAngle(axis, angle);
+  }
+
+  return group;
+}
+
+// ===== DASHED LINE =====
+function makeDashedLine(from, to, color) {
+  const mat = new THREE.LineDashedMaterial({ color, dashSize: 0.3, gapSize: 0.2, transparent: true, opacity: 0.5 });
+  const pts = [from.clone(), to.clone()];
+  const geo = new THREE.BufferGeometry().setFromPoints(pts);
+  const line = new THREE.Line(geo, mat);
+  line.computeLineDistances();
+  return line;
+}
+
+// ===== LIGHTING =====
+scene.add(new THREE.AmbientLight(0x112244, 2));
+const pointLight = new THREE.PointLight(0x00e5ff, 1, 50);
+pointLight.position.set(5, 8, 5);
+scene.add(pointLight);
+
+// ===== STATE =====
+let v1Group, v2Group, vrGroup, dashLine1, dashLine2;
+let animating = false, animProgress = 0;
+
+// Vector state
+const vState = {
+  v1: { mag: 5, theta: 45, phi: 30 },
+  v2: { mag: 4, theta: 135, phi: -20 }
+};
+
+function toCartesian(mag, thetaDeg, phiDeg) {
+  const t = thetaDeg * Math.PI / 180;
+  const p = phiDeg * Math.PI / 180;
+  return new THREE.Vector3(
+    mag * Math.cos(p) * Math.cos(t),
+    mag * Math.sin(p),
+    mag * Math.cos(p) * Math.sin(t)
+  );
+}
+
+function clearVectors() {
+  [v1Group, v2Group, vrGroup, dashLine1, dashLine2].forEach(o => { if (o) scene.remove(o); });
+}
+
+function buildScene(anim = 1) {
+  clearVectors();
+
+  const A = toCartesian(vState.v1.mag, vState.v1.theta, vState.v1.phi);
+  const B = toCartesian(vState.v2.mag, vState.v2.theta, vState.v2.phi);
+  const R = A.clone().add(B);
+
+  // Vector A — from origin
+  v1Group = makeArrow(A, 0x00e5ff, A.length());
+  scene.add(v1Group);
+
+  // Vector B — from origin (also animated: from tip of A)
+  v2Group = makeArrow(B, 0xff4d6d, B.length());
+  // During animation: B starts at tip of A
+  const bStart = A.clone().lerp(new THREE.Vector3(0,0,0), 1 - anim);
+  v2Group.position.copy(bStart.multiplyScalar(anim));
+  scene.add(v2Group);
+
+  // Resultant
+  vrGroup = makeArrow(R, 0xb8ff57, R.length() * anim);
+  scene.add(vrGroup);
+
+  // Dashed lines (triangle law) — from tip of A to tip of R
+  if (anim > 0.05) {
+    dashLine1 = makeDashedLine(A, R, 0x445566);
+    scene.add(dashLine1);
+    dashLine2 = makeDashedLine(new THREE.Vector3(0,0,0), A, 0x002233);
+    scene.add(dashLine2);
+  }
+
+  updateUI(A, B, R);
+}
+
+function updateUI(A, B, R) {
+  const f = v => v.toFixed(2);
+  document.getElementById('v1x').textContent = f(A.x);
+  document.getElementById('v1y').textContent = f(A.y);
+  document.getElementById('v1z').textContent = f(A.z);
+  document.getElementById('v2x').textContent = f(B.x);
+  document.getElementById('v2y').textContent = f(B.y);
+  document.getElementById('v2z').textContent = f(B.z);
+  document.getElementById('rx').textContent = f(R.x);
+  document.getElementById('ry').textContent = f(R.y);
+  document.getElementById('rz').textContent = f(R.z);
+
+  const mag = R.length();
+  const theta = Math.atan2(R.z, R.x) * 180 / Math.PI;
+  const phi = Math.asin(R.y / (mag || 1)) * 180 / Math.PI;
+
+  document.getElementById('rMag').textContent = mag.toFixed(3);
+  document.getElementById('rTheta').textContent = theta.toFixed(1) + '°';
+  document.getElementById('rPhi').textContent = phi.toFixed(1) + '°';
+}
+
+// ===== SLIDERS =====
+function bindSlider(id, valId, key, subkey, suffix = '', scale = 1) {
+  const el = document.getElementById(id);
+  el.addEventListener('input', () => {
+    const val = parseFloat(el.value) * scale;
+    vState[key][subkey] = val;
+    document.getElementById(valId).textContent = parseFloat(el.value).toFixed(subkey === 'mag' ? 1 : 0) + suffix;
+    buildScene();
+  });
+}
+bindSlider('v1Mag', 'v1MagVal', 'v1', 'mag', '');
+bindSlider('v1Theta', 'v1ThetaVal', 'v1', 'theta', '°');
+bindSlider('v1Phi', 'v1PhiVal', 'v1', 'phi', '°');
+bindSlider('v2Mag', 'v2MagVal', 'v2', 'mag', '');
+bindSlider('v2Theta', 'v2ThetaVal', 'v2', 'theta', '°');
+bindSlider('v2Phi', 'v2PhiVal', 'v2', 'phi', '°');
+
+// Init slider display
+document.getElementById('v1MagVal').textContent = '5.0';
+document.getElementById('v1ThetaVal').textContent = '45°';
+document.getElementById('v1PhiVal').textContent = '30°';
+document.getElementById('v2MagVal').textContent = '4.0';
+document.getElementById('v2ThetaVal').textContent = '135°';
+document.getElementById('v2PhiVal').textContent = '-20°';
+
+// ===== ANIMATE BUTTON =====
+document.getElementById('animBtn').addEventListener('click', () => {
+  if (animating) return;
+  animating = true;
+  animProgress = 0;
+});
+
+// ===== STARS =====
+const starGeo = new THREE.BufferGeometry();
+const starVerts = [];
+for (let i = 0; i < 400; i++) {
+  starVerts.push((Math.random()-0.5)*200, (Math.random()-0.5)*200, (Math.random()-0.5)*200);
+}
+starGeo.setAttribute('position', new THREE.Float32BufferAttribute(starVerts, 3));
+scene.add(new THREE.Points(starGeo, new THREE.PointsMaterial({ color: 0x223344, size: 0.15 })));
+
+// ===== RENDER LOOP =====
+let autoRotate = false;
+let rotTimer = 0;
+
+function animate() {
+  requestAnimationFrame(animate);
+
+  if (animating) {
+    animProgress += 0.018;
+    if (animProgress >= 1) { animProgress = 1; animating = false; }
+    buildScene(animProgress);
+  }
+
+  rotTimer++;
+  if (rotTimer > 300 && !isDragging && !animating) {
+    spherical.theta += 0.003;
+    updateCamera();
+  }
+
+  renderer.render(scene, camera);
+}
+
+// ===== INIT =====
+buildScene();
+animate();
+</script>
+</body>
+</html>
